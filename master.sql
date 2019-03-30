@@ -20,8 +20,14 @@ create table if not exists items(
 
 create table if not exists users(
   user_id serial primary key,
+  user_password text not null,
   user_name text not null,
-  user_address text not null);
+  user_gender text,
+  user_phone_number varchar(11) not null,
+  user_zip varchar(7) not null,
+  user_address varchar(255) not null,
+  created_at timestamptz,
+  updated_at timestamptz);
 
 create table if not exists orders(
   order_id serial primary key,

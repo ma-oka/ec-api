@@ -30,8 +30,14 @@ libraryDependencies ++= Seq(
   "be.venneborg" %% "slick-refined" % "0.4.0",
   "be.venneborg" %% "play26-refined" % "0.3.0",
   "com.github.pureconfig" %% "pureconfig" % "0.10.2",
-  "com.dripower" %% "play-circe" % "2711.0"
+  "com.dripower" %% "play-circe" % "2711.0",
+  "com.github.t3hnar" %% "scala-bcrypt" % "4.0",
+  "com.beachape" %% "enumeratum-play" % "1.5.16",
+  "com.beachape" %% "enumeratum-slick" % "1.5.15"
 ) ++ Seq(
+  "com.beachape" %% "enumeratum",
+  "com.beachape" %% "enumeratum-circe"
+).map(_ % "1.5.13") ++ Seq(
   "io.circe" %% "circe-core",
   "io.circe" %% "circe-generic",
   "io.circe" %% "circe-parser",
@@ -45,9 +51,3 @@ libraryDependencies ++= Seq(
   "eu.timepit" %% "refined-scalacheck",
   "eu.timepit" %% "refined-scodec"
 ).map(_ % "0.9.4")
-
-// Adds additional packages into Twirl
-//TwirlKeys.templateImports += "com.example.controllers._"
-
-// Adds additional packages into conf/routes
-// play.sbt.routes.RoutesKeys.routesImport += "com.example.binders._"

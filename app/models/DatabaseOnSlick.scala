@@ -8,11 +8,14 @@ import com.typesafe.scalalogging.LazyLogging
 import cats._
 import cats.implicits._
 import eu.timepit.refined._
-import eu.timepit.refined.api.Refined
+import api.Refined
 import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.{NonNegative, Positive}
-
+import com.github.t3hnar.bcrypt._
 import java.time._
+
+import enumeratum._
+import enumeratum.values.SlickValueEnumSupport
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -52,9 +55,9 @@ class DatabaseOnSlick(val db: MyPostgresProfile.backend.Database)(implicit ec: E
 
     def status: Rep[Refined[Int, NonNegative]] = column[Int Refined NonNegative]("order_status")
 
-    def createdTime = column[Option[OffsetDateTime]]("created_at")
+    def createdTime: Rep[Option[OffsetDateTime]] = column[Option[OffsetDateTime]]("created_at")
 
-    def updatedTime = column[Option[OffsetDateTime]]("updated_at")
+    def updatedTime: Rep[Option[OffsetDateTime]] = column[Option[OffsetDateTime]]("updated_at")
 
     def * =
       (orderId.?, itemId, orderPrice, orderQuantity, userId, status, createdTime, updatedTime) <> (OrderColumn.tupled, OrderColumn.unapply)
@@ -63,11 +66,24 @@ class DatabaseOnSlick(val db: MyPostgresProfile.backend.Database)(implicit ec: E
   class DatabaseUsersTable(tag: Tag) extends Table[UserColumn](tag, "users") {
     def userId: Rep[Refined[Long, Positive]] = column[Long Refined Positive]("user_id", O.AutoInc, O.PrimaryKey)
 
+    def userPassword: Rep[String] = column[String]("user_password")
+
     def userName: Rep[String] = column[String]("user_name")
+
+    def userGender: Rep[String] = column[String]("user_gender")
+
+    def userPhoneNumber: Rep[String] = column[String]("user_phone_number")
+
+    def userZip: Rep[String] = column[String]("user_zip")
 
     def userAddress: Rep[String] = column[String]("user_address")
 
-    def * = (userId.?, userName, userAddress) <> (UserColumn.tupled, UserColumn.unapply)
+    def createdTime: Rep[Option[OffsetDateTime]] = column[Option[OffsetDateTime]]("created_at")
+
+    def updatedTime: Rep[Option[OffsetDateTime]] = column[Option[OffsetDateTime]]("updated_at")
+
+    def * =
+      (userId.?, userPassword, userName, userGender, userPhoneNumber, userZip, userAddress, createdTime, updatedTime) <> (UserColumn.tupled, UserColumn.unapply)
   }
 
   class DatabaseBodyDataTable(tag: Tag) extends Table[BodyDataColumn](tag, "body_data") {
@@ -161,7 +177,24 @@ class DatabaseOnSlick(val db: MyPostgresProfile.backend.Database)(implicit ec: E
   def updateUser(userId: Refined[Long, Positive], userData: RequestUserColumn): Future[UserColumn] =
     db.run(
       usersTable
-        .filter(_.userId === userId).map(databaseUserData => (databaseUserData.userName, databaseUserData.userAddress))
-        .update(userData.userName, userData.userAddress).flatMap(_ =>
+        .filter(_.userId === userId).map(databaseUserData =>
+          (databaseUserData.userName, databaseUserData.userAddress, databaseUserData.updatedTime))
+        .update(userData.userName, userData.userAddress, Some(OffsetDateTime.now())).flatMap(_ =>
           usersTable.filter(_.userId === userData.userId).result.head))
+
+  def createUser(req: CreateUserColumn) = {
+    val salt = generateSalt
+    val user = UserColumn(
+      None,
+      req.userPassword.bcrypt(salt),
+      req.userName,
+      req.userGender,
+      req.userPhoneNumber,
+      req.userZip,
+      req.userAddress,
+      Some(OffsetDateTime.now()),
+      None
+    )
+    db.run(usersTable returning usersTable.map(_.userId) into ((user, id) => user.copy(userId = Some(id))) += user)
+  }
 }

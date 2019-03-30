@@ -41,6 +41,10 @@ class HomeController(cc: ControllerComponents)(implicit ec: ExecutionContext)
     db.createBody(request.body).map(a => Ok(a.asJson))
   }
 
+  def createUser() = Action.async(circe.json[CreateUserColumn]) { implicit request =>
+    db.createUser(request.body).map(a => Ok(a.asJson))
+  }
+
   def updateUser(userId: Long Refined Positive) = Action.async(circe.json[RequestUserColumn]) { implicit request =>
     db.updateUser(userId, request.body).map(a => Ok(ResponseUserColumn(a.userId, a.userName, a.userAddress).asJson))
   }

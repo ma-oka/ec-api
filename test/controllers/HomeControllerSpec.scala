@@ -2,13 +2,13 @@ package controllers
 
 import apps.AppComponents
 import models._
-
 import MyPostgresProfile.api._
 import MyPostgresProfile.mapping._
-
+import com.github.maoka.api.Gender
 import eu.timepit.refined._
 import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.{NonNegative, Positive}
+import io.circe.{Decoder, Encoder}
 import io.circe.generic.auto._
 import io.circe.parser._
 import io.circe.refined._
@@ -73,7 +73,7 @@ class HomeControllerSpec
       val result =
         controller.listItemsByBodyData(refineV[Positive](2.toLong).right.get)(FakeRequest(GET, "/items?user=2"))
       val bodyText = contentAsString(result)
-      bodyText mustBe """[{"itemId":2,"itemName":"シャツ","itemPrice":900,"itemQuantity":150,"sizeId":2,"createTime":null,"updateTime":null,"deleteTime":null}]"""
+      bodyText mustBe """[{"itemId":1,"itemName":"シャツ","itemPrice":1000,"itemQuantity":100,"sizeId":1,"createTime":null,"updateTime":null,"deleteTime":null}]"""
     }
 
     "updateUsers" in {
@@ -151,5 +151,22 @@ class HomeControllerSpec
         .flatMap(_.as[BodyDataColumn]).right.get.bodyDataId.get},"userId":1,"height":1650,"chest":820,"waist":700}"""
     }
 
+    "createUser" in {
+      val controller = components.applicationController
+      implicit val mat = components.application.materializer
+      val body =
+        parse(
+          s"""{"userPassword":"USPb9mhu","userName":"hayashi","userGender":"male","userPhoneNumber":"09087654321","userZip":"1002000","userAddress":"tokyo"}""")
+          .flatMap(_.as[CreateUserColumn]).right.get
+      val result = controller.createUser()(FakeRequest(POST, "/users").withBody(body))
+      val bodyText = contentAsString(result)
+      await(
+        db.run(new DatabaseOnSlick(db)(components.executionContext).usersTable
+          .filter(_.userId === parse(bodyText).flatMap(_.as[UserColumn]).right.get.userId.get).delete))
+      bodyText mustBe s"""{"userId":${parse(bodyText)
+        .flatMap(_.as[UserColumn]).right.get.userId.get},"userPassword":"${parse(bodyText)
+        .flatMap(_.as[UserColumn]).right.get.userPassword}","userName":"hayashi","userGender":"male","userPhoneNumber":"09087654321","userZip":"1002000","userAddress":"tokyo","createdTime":"${parse(
+        bodyText).flatMap(_.as[UserColumn]).right.get.createdTime.get}","updatedTime":null}"""
+    }
   }
 }
